@@ -1,8 +1,10 @@
-#define LED_ERROR       -1
-#define LED_IDLE        0
-#define LED_CALIB       1
-#define LED_NORMAL      2
+#include "led_status.h"
+#include "adc.h"
+#include "eeprom.h"
 
+unsigned long led_service_ctr = 0;
+unsigned long adc_service_ctr = 0;
+unsigned long main_service_ctr = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -11,69 +13,38 @@ void setup() {
   Serial.println();
   Serial.println("Relay Driver");
 
-  pinMode(LED_BUILTIN, OUTPUT);
+  init_led_status();
 }
 
-int led_counter = 0;
-int led_state = LED_ERROR;
-void led_service(void)
-{
-  switch(led_state)
-  {
-    case LED_ERROR:
-      if(led_counter == 1)
-      {
-        digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
-
-        // led_counter = 1; //let the counter do the thing
-      }
-      else
-      {
-        digitalWrite(LED_BUILTIN, HIGH);  // turn the LED on (HIGH is the voltage level)
-        led_counter = 0; //theres ++ at the bottom
-      }
-      break;
-  }
-  led_counter++;
-}
-
-int sensorValue; 
-void adc_service(void)
-{
-  int aveSensorValue = 0;
-  int samples = 20;
-
-  for(int i = 0; i < samples; i++)
-  {
-    aveSensorValue += analogRead(A0);
-    delay(5);
-  }
-  aveSensorValue /= samples;
-  
-  sensorValue = aveSensorValue;
-  Serial.print("Sensor Value : ");
-  Serial.println(sensorValue);
-}
-
-unsigned long led_service_ctr = 0;
-unsigned long adc_service_ctr = 0;
 void loop() {
   // put your main code here, to run repeatedly:
 
-
-  if((millis() - adc_service_ctr) > 1000)
+  if(millis() < main_service_ctr)
+    main_service_ctr = 0;
+  if((millis() - main_service_ctr) > 2500)
   {
-    adc_service_ctr = millis();
-    adc_service();
-  }
+    main_service_ctr = millis();
+  
+    get_adc(0);
+
+ 
+ 
+  }  
+
   if(millis() < adc_service_ctr)
       adc_service_ctr = 0;
+  if((millis() - adc_service_ctr) > 100)
+  {
+    adc_service_ctr = millis();
+    service_adc();
+  }
 
+  if(millis() < led_service_ctr)
+      led_service_ctr = 0;
   if((millis() - led_service_ctr) > 100)
   {
     led_service_ctr = millis();
-    led_service();
+    service_led_status();
   }
-  if(millis() < led_service_ctr)
-      led_service_ctr = 0;
-}
+  
+} //end loop
